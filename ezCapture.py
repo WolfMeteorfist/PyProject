@@ -6,10 +6,6 @@ import shlex
 from datetime import datetime
 import subprocess
 import log
-from watchdog.observers import Observer
-from FileEventHandler import EventHandler
-import shutil
-import pandas
 
 # =====================配置项==================
 
@@ -126,11 +122,10 @@ class CaptureEventTask:
         pre_modify_time = None
         while True:
             if os.stat(self.cpu_usage_file).st_mtime != pre_modify_time:
-                f.write(datetime.utcnow().strftime(
-                    '%m-%d %H:%M:%S.%f')[:-3] + '\n')
+                f.write(datetime.utcnow().strftime('%m-%d %H:%M:%S.%f')[:-3] + '\n')
                 f.flush()
                 pre_modify_time = os.stat(self.cpu_usage_file).st_mtime
-            time.sleep(capture_cpu_time_interval/2)
+            time.sleep(capture_cpu_time_interval / 2)
         pass
 
     def __get_mem_info(self):
@@ -142,8 +137,7 @@ class CaptureEventTask:
                     capture_output=True,
                     encoding='utf-8',
                 ).stdout
-                timestamp = datetime.utcnow().strftime(
-                    '%m-%d %H:%M:%S.%f')[:-3]
+                timestamp = datetime.utcnow().strftime('%m-%d %H:%M:%S.%f')[:-3]
                 time.sleep(captuer_mem_time_interval)
                 f.write(timestamp + '\n')
                 f.write(statm)
@@ -172,7 +166,8 @@ class CaptureEventTask:
                 capture_output=True,
             )
             .stdout.decode()
-            .strip().splitlines()[0]
+            .strip()
+            .splitlines()[0]
         )
         log.d(f"查找到{self.app}对应的pid:{pid}.")
         app_pid_dict[self.app] = pid
@@ -197,7 +192,7 @@ class CaptureEventTask:
 
     def end_and_analyze(self):
         log.d("开始解析<{}>数据".format(self.app))
-        
+
         pass
 
     pass
@@ -220,7 +215,9 @@ def analyze_meminfo(mem_file_path: str):
 def analyze_cpuinfo(top_file_path: str):
     pass
 
+
 process = None
+
 
 def startGetLog():
     # 清空日志
