@@ -11,7 +11,7 @@ import log
 
 # 性能目标app
 # 'launcher' ， 以;为分隔符
-target_app = ('setting', 'launcher')
+target_app = ('voice', )
 
 # 捕获时间
 # 10分钟: 10 * 60 * 1000
@@ -26,13 +26,13 @@ capture_cpu_time_interval = 1
 app_package_dict = {
     'launcher': 'com.aispeech.ccui.launcher',
     'speech': 'com.aispeech.ccui.speech',
-    'kernel': 'com.aispeech.ccui.voice',
+    'voice': 'com.aispeech.ccui.voice',
     'setting': 'com.aispeech.ccui.setting',
     'tuya': 'com.aispeech.ccui.tyzigbee',
 }
 
 # 全局获取时间戳
-TIME_STAMP = datetime.utcnow().strftime('%m-%d %H:%M:%S.%f')[:-3]
+TIME_STAMP = datetime.now().strftime('%m-%d %H:%M:%S.%f')[:-3]
 # 源数据目录
 ORIGIN_DATA_DIR = f'{os.path.dirname(__file__)}/analyze/{TIME_STAMP}/origin_data'
 # 解析结果目录
@@ -75,7 +75,7 @@ class CaptureEventTask:
 
     def __get_top_info(self):
         log.d(f"开始捕获{self.app}的top数据. 目标pid为:{self.pid}")
-        threading.Thread(target=self.__file_observe).start()
+        # threading.Thread(target=self.__file_observe).start()
         # 获取所有当前运行线程
         tidList = subprocess.Popen(
             f"adb shell top -H -b -d {capture_cpu_time_interval} -m 10 -p {self.pid}",
@@ -85,13 +85,25 @@ class CaptureEventTask:
             universal_newlines=True,
         )
         log.v("写入中" + '.' * 10)
+        time_inserted = False
         while not end_captrue_flag:
             # 之所以每次都要open file，是因为当前没有办法在只open一次的情况下让watch_dog观测到文件变化
             # 目前发现的问题就是只有在close时，watchDog才能接受到回调.
             file = open(self.cpu_usage_file, 'a')
             for line in tidList.stdout:
                 if len(line.strip()) == 0:
+                    if not time_inserted:
+                        log.v("写入时间")
+                        capture_time = subprocess.run(
+                            'adb shell date +"%m-%d\ %H:%M:%S.%N" | cut -b 1-18',
+                            shell=True,
+                            capture_output=True,
+                            universal_newlines=True
+                        ).stdout
+                        file.write(capture_time)
+                        time_inserted = True
                     continue
+                time_inserted = False
                 file.write(str(line))
                 file.flush()
                 if end_captrue_flag:
@@ -101,7 +113,7 @@ class CaptureEventTask:
     # # 内容变更回调，打点用
     # def __do_when_change(f):
     #     log.d("变化啦！！")
-    #     f.write(datetime.utcnow().strftime('%m-%d %H:%M:%S.%f')[:-3] + '\n')
+    #     f.write(datetime.now().strftime('%m-%d %H:%M:%S.%f')[:-3] + '\n')
     #     f.close()
     #     pass
 
@@ -123,10 +135,11 @@ class CaptureEventTask:
         pre_modify_time = None
         while True:
             if os.stat(self.cpu_usage_file).st_mtime != pre_modify_time:
-                f.write(datetime.utcnow().strftime('%m-%d %H:%M:%S.%f')[:-3] + '\n')
+                f.write(datetime.utcnow().strftime(
+                    '%m-%d %H:%M:%S.%f')[:-3] + '\n')
                 f.flush()
                 pre_modify_time = os.stat(self.cpu_usage_file).st_mtime
-            time.sleep(capture_cpu_time_interval / 2)
+            time.sleep(capture_cpu_time_interval/2)
         pass
 
     def __get_mem_info(self):
@@ -138,7 +151,8 @@ class CaptureEventTask:
                     capture_output=True,
                     encoding='utf-8',
                 ).stdout
-                timestamp = datetime.utcnow().strftime('%m-%d %H:%M:%S.%f')[:-3]
+                timestamp = datetime.utcnow().strftime(
+                    '%m-%d %H:%M:%S.%f')[:-3]
                 time.sleep(captuer_mem_time_interval)
                 f.write(timestamp + '\n')
                 f.write(statm)
@@ -167,8 +181,7 @@ class CaptureEventTask:
                 capture_output=True,
             )
             .stdout.decode()
-            .strip()
-            .splitlines()[0]
+            .strip().splitlines()[0]
         )
         log.d(f"查找到{self.app}对应的pid:{pid}.")
         app_pid_dict[self.app] = pid

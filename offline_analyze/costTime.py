@@ -32,7 +32,7 @@ def getCostTime(resultDir: str, logFilePath: str):
         return
 
     process = subprocess.run(
-        'grep -E "(CostTime-COST:  costTime|local iot,api:|finish iot control.|feed input.*\"errId\".*)" {0} | grep -v -E "(asrResult.*呜呜)"'.format(logFilePath), capture_output=True)
+        'grep -E "(CostTime-COST:  costTime|local iot,api:|finish iot control.|feed input.*\"errId\".*)" {0} | grep -v -E "(asrResult ->.*呜呜)"'.format(logFilePath), capture_output=True)
     costTimeLog = process.stdout.decode('unicode_escape').splitlines()
     log.d("总共找到了:{0}行".format(costTimeLog.__len__()))
 
