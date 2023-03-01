@@ -28,6 +28,7 @@ app_package_dict = {
     'speech': 'com.aispeech.ccui.speech',
     'kernel': 'com.aispeech.ccui.voice',
     'setting': 'com.aispeech.ccui.setting',
+    'tuya': 'com.aispeech.ccui.tyzigbee',
 }
 
 # 全局获取时间戳
