@@ -112,38 +112,6 @@ class CaptureEventTask:
                     break
         pass
 
-    # # 内容变更回调，打点用
-    # def __do_when_change(f):
-    #     log.d("变化啦！！")
-    #     f.write(datetime.now().strftime('%m-%d %H:%M:%S.%f')[:-3] + '\n')
-    #     f.close()
-    #     pass
-
-    # # watch_dog进行观测.原理也是select.
-    # def __file_watchdog(self):
-    #     log.i(f"开始观测文件:'{self.cpu_usage_file}'变化")
-    #     event_handler = EventHandler(self.__do_when_change)
-    #     observer = Observer()
-    #     observer.schedule(event_handler, path=self.cpu_usage_file, recursive=True)
-    #     observer.start()
-    #     try:
-    #         observer.join()
-    #         pass
-    #     except KeyboardInterrupt:
-    #         observer.stop()
-
-    # def __file_observe(self):
-    #     f = open(self.cpu_usage_file, 'a')
-    #     pre_modify_time = None
-    #     while True:
-    #         if os.stat(self.cpu_usage_file).st_mtime != pre_modify_time:
-    #             f.write(datetime.utcnow().strftime(
-    #                 '%m-%d %H:%M:%S.%f')[:-3] + '\n')
-    #             f.flush()
-    #             pre_modify_time = os.stat(self.cpu_usage_file).st_mtime
-    #         time.sleep(capture_cpu_time_interval/2)
-    #     pass
-
     def __get_mem_info(self):
         with open(self.mem_info_file, 'w') as f:
             while not end_captrue_flag:
@@ -212,7 +180,7 @@ class CaptureEventTask:
         # 分析meminfo
         result_analyze.mem_analyze(self.app, self.mem_info_file, RESULT_DIR)
         # 分析cpu
-        result_analyze.cpu_analyze(self.app, self.cpu_usage_file, RESULT_DIR)
+        result_analyze.cpu_analyze(self.app,self.pid, self.cpu_usage_file, RESULT_DIR)
         log.d("<{}>数据解析完成".format(self.app))
         pass
 
