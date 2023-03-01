@@ -6,10 +6,6 @@ import shlex
 from datetime import datetime
 import subprocess
 import log
-from watchdog.observers import Observer
-from FileEventHandler import EventHandler
-import shutil
-import pandas
 
 # =====================配置项==================
 
