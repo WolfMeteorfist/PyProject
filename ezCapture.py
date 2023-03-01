@@ -6,6 +6,7 @@ import shlex
 from datetime import datetime
 import subprocess
 import log
+import result_analyze
 
 # =====================配置项==================
 
@@ -34,9 +35,9 @@ app_package_dict = {
 # 全局获取时间戳
 TIME_STAMP = datetime.now().strftime('%m-%d %H:%M:%S.%f')[:-3]
 # 源数据目录
-ORIGIN_DATA_DIR = f'{os.path.dirname(__file__)}/analyze/{TIME_STAMP}/origin_data'
+ORIGIN_DATA_DIR = f'{os.path.dirname(__file__)}{os.sep}analyze{os.sep}{TIME_STAMP}{os.sep}origin_data'
 # 解析结果目录
-RESULT_DIR = f'{os.path.dirname(__file__)}/analyze/{TIME_STAMP}/result'
+RESULT_DIR = f'{os.path.dirname(__file__)}{os.sep}analyze{os.sep}{TIME_STAMP}{os.sep}result{os.sep}'
 
 app_pid_dict: dict[str, str] = dict()
 
@@ -53,7 +54,7 @@ def make_dirs(file_full_path):
 
 class CaptureEventTask:
     # 内存信息存储目标全路径
-    mem_result_file = None
+    mem_info_file = None
 
     # cpu信息存储目标全路径
     cpu_usage_file = None
@@ -66,7 +67,7 @@ class CaptureEventTask:
 
     def __init__(self, app: str) -> None:
         log.d("正在构造" + app + "任务.")
-        self.mem_result_file = ORIGIN_DATA_DIR + os.sep + "mem_info" + os.sep + app
+        self.mem_info_file = ORIGIN_DATA_DIR + os.sep + "mem_info" + os.sep + app
         self.cpu_usage_file = ORIGIN_DATA_DIR + os.sep + "cpu_info" + os.sep + app
         self.app = app
 
@@ -75,7 +76,6 @@ class CaptureEventTask:
 
     def __get_top_info(self):
         log.d(f"开始捕获{self.app}的top数据. 目标pid为:{self.pid}")
-        # threading.Thread(target=self.__file_observe).start()
         # 获取所有当前运行线程
         tidList = subprocess.Popen(
             f"adb shell top -H -b -d {capture_cpu_time_interval} -m 10 -p {self.pid}",
@@ -84,8 +84,9 @@ class CaptureEventTask:
             stderr=subprocess.STDOUT,
             universal_newlines=True,
         )
-        log.v("写入中" + '.' * 10)
+        log.v("写入中.")
         time_inserted = False
+        count = 0
         while not end_captrue_flag:
             # 之所以每次都要open file，是因为当前没有办法在只open一次的情况下让watch_dog观测到文件变化
             # 目前发现的问题就是只有在close时，watchDog才能接受到回调.
@@ -93,7 +94,8 @@ class CaptureEventTask:
             for line in tidList.stdout:
                 if len(line.strip()) == 0:
                     if not time_inserted:
-                        log.v("写入时间")
+                        count+=1
+                        log.v("写入时间" + '.' * (count % 9))
                         capture_time = subprocess.run(
                             'adb shell date +"%m-%d\ %H:%M:%S.%N" | cut -b 1-18',
                             shell=True,
@@ -130,20 +132,20 @@ class CaptureEventTask:
     #     except KeyboardInterrupt:
     #         observer.stop()
 
-    def __file_observe(self):
-        f = open(self.cpu_usage_file, 'a')
-        pre_modify_time = None
-        while True:
-            if os.stat(self.cpu_usage_file).st_mtime != pre_modify_time:
-                f.write(datetime.utcnow().strftime(
-                    '%m-%d %H:%M:%S.%f')[:-3] + '\n')
-                f.flush()
-                pre_modify_time = os.stat(self.cpu_usage_file).st_mtime
-            time.sleep(capture_cpu_time_interval/2)
-        pass
+    # def __file_observe(self):
+    #     f = open(self.cpu_usage_file, 'a')
+    #     pre_modify_time = None
+    #     while True:
+    #         if os.stat(self.cpu_usage_file).st_mtime != pre_modify_time:
+    #             f.write(datetime.utcnow().strftime(
+    #                 '%m-%d %H:%M:%S.%f')[:-3] + '\n')
+    #             f.flush()
+    #             pre_modify_time = os.stat(self.cpu_usage_file).st_mtime
+    #         time.sleep(capture_cpu_time_interval/2)
+    #     pass
 
     def __get_mem_info(self):
-        with open(self.mem_result_file, 'w') as f:
+        with open(self.mem_info_file, 'w') as f:
             while not end_captrue_flag:
                 statm = subprocess.run(
                     'adb shell cat /proc/' + self.pid + '/statm',
@@ -189,7 +191,7 @@ class CaptureEventTask:
 
     def start_capture(self):
         # 创建文件夹
-        make_dirs(self.mem_result_file)
+        make_dirs(self.mem_info_file)
         make_dirs(self.cpu_usage_file)
         # 开启线程捕获cpu数据
         top_t = threading.Thread(target=self.__get_top_info)
@@ -206,7 +208,12 @@ class CaptureEventTask:
 
     def end_and_analyze(self):
         log.d("开始解析<{}>数据".format(self.app))
-
+        make_dirs(RESULT_DIR)
+        # 分析meminfo
+        result_analyze.mem_analyze(self.app, self.mem_info_file, RESULT_DIR)
+        # 分析cpu
+        result_analyze.cpu_analyze(self.app, self.cpu_usage_file, RESULT_DIR)
+        log.d("<{}>数据解析完成".format(self.app))
         pass
 
     pass
@@ -218,20 +225,6 @@ def get_sys_meminfo():
 
 def get_cpu_usage():
     pass
-
-
-# 分析meminfo
-def analyze_meminfo(mem_file_path: str):
-    pass
-
-
-# 分析cpu
-def analyze_cpuinfo(top_file_path: str):
-    pass
-
-
-process = None
-
 
 def startGetLog():
     # 清空日志
