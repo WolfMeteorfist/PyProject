@@ -212,12 +212,16 @@ class CaptureEventTask:
         make_dirs(self.cpu_process_usage_file)
         # 开启线程捕获cpu数据
         top_t = threading.Thread(target=self.__get_thread_top_info)
+        # 开启线程捕获cpu数据
+        process_top_t = threading.Thread(target=self.__get_process_top_info)
         # 开启线程捕获mem数据
         mem_t = threading.Thread(target=self.__get_mem_info)
         top_t.start()
         mem_t.start()
+        process_top_t.start()
         top_t.join()
         mem_t.join()
+        process_top_t.join()
         # 进行观测，若接收到输入，终止捕获并进行数据分析
         log.d("观测结束")
         self.end_and_analyze()
